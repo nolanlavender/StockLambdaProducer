@@ -213,17 +213,55 @@ Resources:
       LogGroupName: !Sub '/aws/stepfunctions/${AWS::StackName}-stock-price-collector'
       RetentionInDays: 7
 
-  # EventBridge rule to start the Step Function (runs once to initiate the loop)
-  StepFunctionTrigger:
+  # Smart controller Lambda that starts/stops Step Function based on market hours
+  StepFunctionControllerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: step_function_controller.lambda_handler
+      Runtime: python3.11
+      Timeout: 30
+      Environment:
+        Variables:
+          STATE_MACHINE_ARN: !Ref StockPriceStateMachine
+          ENFORCE_MARKET_HOURS: !Ref EnforceMarketHours
+          TEST_MODE: !Ref TestMode
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - states:ListExecutions
+                - states:StartExecution
+                - states:StopExecution
+                - states:DescribeExecution
+              Resource: !Ref StockPriceStateMachine
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: '*'
+
+  # EventBridge rule to check and control Step Function every 30 minutes
+  StepFunctionControllerRule:
     Type: AWS::Events::Rule
     Properties:
-      Description: "Start the stock price collection Step Function"
-      ScheduleExpression: "rate(12 hours)"
+      Description: "Smart controller for Step Function - starts/stops based on market hours"
+      ScheduleExpression: "rate(30 minutes)"
       State: ENABLED
       Targets:
-        - Arn: !GetAtt StockPriceStateMachine.Arn
-          Id: "StockStateMachineTarget"
-          RoleArn: !GetAtt EventBridgeExecutionRole.Arn
+        - Arn: !GetAtt StepFunctionControllerFunction.Arn
+          Id: "StepFunctionControllerTarget"
+
+  # Permission for EventBridge to invoke the controller Lambda
+  StepFunctionControllerPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref StepFunctionControllerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt StepFunctionControllerRule.Arn
 
   StockLambdaProducerLogGroup:
     Type: AWS::Logs::LogGroup
