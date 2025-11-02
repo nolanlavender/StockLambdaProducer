@@ -128,9 +128,7 @@ Resources:
                   - logs:PutLogEvents
                   - logs:DescribeLogGroups
                   - logs:DescribeLogStreams
-                Resource: 
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/stepfunctions/${AWS::StackName}-stock-price-collector'
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/stepfunctions/${AWS::StackName}-stock-price-collector:*'
+                Resource: '*'
 
   EventBridgeExecutionRole:
     Type: AWS::IAM::Role
@@ -224,12 +222,12 @@ Resources:
           }
         }
       RoleArn: !GetAtt StepFunctionExecutionRole.Arn
-      LoggingConfiguration:
-        Level: ERROR
-        IncludeExecutionData: true
-        Destinations:
-          - CloudWatchLogsLogGroup:
-              LogGroupArn: !GetAtt StepFunctionLogGroup.Arn
+      # LoggingConfiguration:
+      #   Level: ERROR
+      #   IncludeExecutionData: true
+      #   Destinations:
+      #     - CloudWatchLogsLogGroup:
+      #         LogGroupArn: !GetAtt StepFunctionLogGroup.Arn
 
   StepFunctionLogGroup:
     Type: AWS::Logs::LogGroup
