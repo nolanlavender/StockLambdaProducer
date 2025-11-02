@@ -7,7 +7,7 @@ set -e
 # Configuration
 STACK_NAME="stock-lambda-producer"
 REGION="us-east-1"
-S3_BUCKET=""  # You'll need to set this to your deployment bucket
+S3_BUCKET="sam-deployment-staging"  # You'll need to set this to your deployment bucket
 
 # Colors for output
 RED='\033[0;31m'
@@ -51,7 +51,7 @@ fi
 
 # Optional parameters with defaults
 KINESIS_STREAM_NAME=${KINESIS_STREAM_NAME:-"stock-prices-stream"}
-POLLING_INTERVAL=${POLLING_INTERVAL:-"300"}
+POLLING_INTERVAL=${POLLING_INTERVAL:-"5"}
 ENFORCE_MARKET_HOURS=${ENFORCE_MARKET_HOURS:-"true"}
 TEST_MODE=${TEST_MODE:-"false"}
 USE_SECRETS_MANAGER=${USE_SECRETS_MANAGER:-"true"}

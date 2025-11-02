@@ -17,9 +17,9 @@ A configurable AWS Lambda function that fetches real-time stock prices and strea
 ## Architecture
 
 ```
-EventBridge Schedule → Lambda Function → Finnhub API
-                           ↓
-                    Kinesis Data Stream
+EventBridge (12h) → Step Functions → Lambda Function → Finnhub API
+                        ↓ (5s loop)        ↓
+                    Wait State        Kinesis Data Stream
 ```
 
 ## Prerequisites

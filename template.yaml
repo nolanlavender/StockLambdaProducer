@@ -15,10 +15,11 @@ Parameters:
   
   PollingIntervalSeconds:
     Type: Number
-    Default: 300
-    Description: How often to fetch stock prices (in seconds)
-    MinValue: 60
+    Default: 5
+    Description: How often to fetch stock prices (in seconds) - Step Functions supports any interval
+    MinValue: 1
     MaxValue: 3600
+    ConstraintDescription: Must be between 1 and 3600 seconds (1 second to 1 hour)
   
   EnforceMarketHours:
     Type: String
@@ -95,12 +96,134 @@ Resources:
                   - secretsmanager:GetSecretValue
                 Resource: !Ref FinnhubApiKeySecret
               - !Ref AWS::NoValue
-      Events:
-        ScheduledEvent:
-          Type: Schedule
-          Properties:
-            Schedule: !Sub 'rate(${PollingIntervalSeconds} seconds)'
-            Enabled: true
+
+  # Step Functions resources for sub-minute execution
+  StepFunctionExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !GetAtt StockLambdaProducer.Arn
+        - PolicyName: LoggingPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  EventBridgeExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StartStepFunctionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource: !Ref StockPriceStateMachine
+
+  StockPriceStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub '${AWS::StackName}-stock-price-collector'
+      DefinitionString: !Sub |
+        {
+          "Comment": "Stock price collection with configurable intervals (supports sub-minute)",
+          "StartAt": "FetchStockPrices",
+          "States": {
+            "FetchStockPrices": {
+              "Type": "Task",
+              "Resource": "${StockLambdaProducer.Arn}",
+              "Next": "CheckContinueCondition",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "IntervalSeconds": 2,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 2.0
+                }
+              ],
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "Next": "WaitAfterError"
+                }
+              ]
+            },
+            "CheckContinueCondition": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.statusCode",
+                  "NumericEquals": 200,
+                  "Next": "WaitForNextRun"
+                }
+              ],
+              "Default": "WaitAfterError"
+            },
+            "WaitForNextRun": {
+              "Type": "Wait",
+              "Seconds": ${PollingIntervalSeconds},
+              "Next": "FetchStockPrices"
+            },
+            "WaitAfterError": {
+              "Type": "Wait",
+              "Seconds": 60,
+              "Next": "FetchStockPrices"
+            }
+          }
+        }
+      RoleArn: !GetAtt StepFunctionExecutionRole.Arn
+      LoggingConfiguration:
+        Level: ERROR
+        IncludeExecutionData: true
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt StepFunctionLogGroup.Arn
+
+  StepFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/stepfunctions/${AWS::StackName}-stock-price-collector'
+      RetentionInDays: 7
+
+  # EventBridge rule to start the Step Function (runs once to initiate the loop)
+  StepFunctionTrigger:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Start the stock price collection Step Function"
+      ScheduleExpression: "rate(12 hours)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt StockPriceStateMachine.Arn
+          Id: "StockStateMachineTarget"
+          RoleArn: !GetAtt EventBridgeExecutionRole.Arn
 
   StockLambdaProducerLogGroup:
     Type: AWS::Logs::LogGroup
@@ -120,3 +243,11 @@ Outputs:
   KinesisStreamName:
     Description: Kinesis Data Stream Name
     Value: !Ref StockPricesStream
+    
+  StepFunctionArn:
+    Description: Step Function State Machine ARN
+    Value: !Ref StockPriceStateMachine
+    
+  StepFunctionName:
+    Description: Step Function State Machine Name
+    Value: !Sub '${AWS::StackName}-stock-price-collector'
