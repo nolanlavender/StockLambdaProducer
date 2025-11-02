@@ -1,0 +1,11 @@
+{
+  "stock_symbols": ["AAPL", "GOOGL", "MSFT"],
+  "kinesis_stream_name": "test-stock-stream",
+  "polling_interval_seconds": 60,
+  "max_requests_per_minute": 30,
+  "aws_region": "us-east-1",
+  "enforce_market_hours": false,
+  "test_mode": true,
+  "use_secrets_manager": false,
+  "secret_name": "test-secret"
+}

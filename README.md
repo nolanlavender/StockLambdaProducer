@@ -250,6 +250,59 @@ Check CloudWatch logs for detailed error information:
 aws logs tail /aws/lambda/stock-lambda-producer --follow
 ```
 
+## 🧪 Local Testing
+
+Before deploying, test your code locally:
+
+### Quick Test
+```bash
+# Test the Lambda function locally
+python3 local_test.py
+```
+
+### Full Test Suite
+```bash
+# Run comprehensive tests
+./run_tests.sh
+```
+
+### Test Configuration
+
+The testing framework includes:
+- **Unit tests** for individual components
+- **Integration tests** for end-to-end flows
+- **Mock services** for AWS Kinesis and Secrets Manager
+- **API response mocking** for Finnhub
+- **Market hours testing** with various scenarios
+
+### Test Files Structure
+```
+tests/
+├── __init__.py
+├── conftest.py              # Test fixtures and setup
+├── test_config.py           # Configuration tests
+├── test_market_hours.py     # Market hours logic tests
+├── test_secrets_manager.py  # Secrets Manager tests
+├── test_lambda_function.py  # Lambda function tests
+├── test_integration.py      # End-to-end tests
+└── test_config.json         # Test configuration
+```
+
+### Running Specific Tests
+```bash
+# Test only configuration
+pytest tests/test_config.py -v
+
+# Test only market hours
+pytest tests/test_market_hours.py -v
+
+# Test with coverage
+pytest tests/ --cov=. --cov-report=html
+
+# Test specific function
+pytest tests/test_lambda_function.py::TestLambdaFunction::test_lambda_handler_market_open -v
+```
+
 ## Security
 
 - API keys are stored as encrypted environment variables
