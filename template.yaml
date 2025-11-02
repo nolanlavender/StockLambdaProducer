@@ -123,11 +123,14 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
+                  - logs:CreateLogDelivery
+                  - logs:GetLogDelivery
+                  - logs:UpdateLogDelivery
+                  - logs:DeleteLogDelivery
+                  - logs:ListLogDeliveries
+                  - logs:PutResourcePolicy
+                  - logs:DescribeResourcePolicies
                   - logs:DescribeLogGroups
-                  - logs:DescribeLogStreams
                 Resource: '*'
 
   EventBridgeExecutionRole:
@@ -152,6 +155,7 @@ Resources:
 
   StockPriceStateMachine:
     Type: AWS::StepFunctions::StateMachine
+    DependsOn: StepFunctionLogGroup
     Properties:
       StateMachineName: !Sub '${AWS::StackName}-stock-price-collector'
       DefinitionString: !Sub |
@@ -222,12 +226,12 @@ Resources:
           }
         }
       RoleArn: !GetAtt StepFunctionExecutionRole.Arn
-      # LoggingConfiguration:
-      #   Level: ERROR
-      #   IncludeExecutionData: true
-      #   Destinations:
-      #     - CloudWatchLogsLogGroup:
-      #         LogGroupArn: !GetAtt StepFunctionLogGroup.Arn
+      LoggingConfiguration:
+        Level: ERROR
+        IncludeExecutionData: true
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt StepFunctionLogGroup.Arn
 
   StepFunctionLogGroup:
     Type: AWS::Logs::LogGroup

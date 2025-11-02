@@ -60,6 +60,31 @@ echo -e "${GREEN}Building SAM application...${NC}"
 sam build
 
 echo -e "${GREEN}Deploying to AWS...${NC}"
+
+# Check if stack exists and its status
+STACK_INFO=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$REGION" 2>/dev/null || echo "false")
+
+if [ "$STACK_INFO" != "false" ]; then
+    # Try to get stack status using AWS CLI query (no jq dependency)
+    STACK_STATUS=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$REGION" --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "UNKNOWN")
+    
+    if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ]; then
+        echo -e "${RED}Stack $STACK_NAME is in ROLLBACK_COMPLETE state${NC}"
+        echo -e "${YELLOW}Deleting failed stack before redeployment...${NC}"
+        aws cloudformation delete-stack --stack-name "$STACK_NAME" --region "$REGION"
+        echo -e "${YELLOW}Waiting for stack deletion to complete...${NC}"
+        aws cloudformation wait stack-delete-complete --stack-name "$STACK_NAME" --region "$REGION"
+        echo -e "${GREEN}Stack deleted. Proceeding with fresh deployment...${NC}"
+        UPDATE_MODE="--no-confirm-changeset"
+    else
+        echo -e "${YELLOW}Stack $STACK_NAME already exists (Status: $STACK_STATUS). Updating...${NC}"
+        UPDATE_MODE="--no-confirm-changeset"
+    fi
+else
+    echo -e "${YELLOW}Creating new stack $STACK_NAME...${NC}"
+    UPDATE_MODE="--no-confirm-changeset"
+fi
+
 sam deploy \
     --stack-name "$STACK_NAME" \
     --s3-bucket "$S3_BUCKET" \
@@ -72,12 +97,25 @@ sam deploy \
         EnforceMarketHours="$ENFORCE_MARKET_HOURS" \
         TestMode="$TEST_MODE" \
         UseSecretsManager="$USE_SECRETS_MANAGER" \
-    --confirm-changeset
+    $UPDATE_MODE \
+    --no-fail-on-empty-changeset
 
-echo -e "${GREEN}Deployment completed successfully!${NC}"
-echo -e "${YELLOW}Stack outputs:${NC}"
-aws cloudformation describe-stacks \
-    --stack-name "$STACK_NAME" \
-    --region "$REGION" \
-    --query 'Stacks[0].Outputs[*].[OutputKey,OutputValue]' \
-    --output table
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}Deployment completed successfully!${NC}"
+    echo -e "${YELLOW}Stack outputs:${NC}"
+    aws cloudformation describe-stacks \
+        --stack-name "$STACK_NAME" \
+        --region "$REGION" \
+        --query 'Stacks[0].Outputs[*].[OutputKey,OutputValue]' \
+        --output table
+    
+    echo ""
+    echo -e "${GREEN}✅ Stack is ready! You can now:${NC}"
+    echo -e "${YELLOW}  • Monitor Step Function: AWS Console > Step Functions > $STACK_NAME-stock-price-collector${NC}"
+    echo -e "${YELLOW}  • View Kinesis Stream: AWS Console > Kinesis > $KINESIS_STREAM_NAME${NC}"
+    echo -e "${YELLOW}  • Check Lambda Logs: AWS Console > CloudWatch > Logs${NC}"
+else
+    echo -e "${RED}Deployment failed!${NC}"
+    echo -e "${YELLOW}Check the error above and run ./scripts/teardown.sh if needed${NC}"
+    exit 1
+fi
