@@ -1,0 +1,226 @@
+# Stock Lambda Producer
+
+A configurable AWS Lambda function that fetches real-time stock prices and streams them to Amazon Kinesis Data Streams.
+
+## Features
+
+- ✅ Configurable stock symbols and polling intervals
+- ✅ Real-time stock price fetching from Finnhub API
+- ✅ **Market hours enforcement** - only runs during trading hours
+- ✅ **Test mode** - bypass market hours for testing/development
+- ✅ Automatic streaming to Kinesis Data Streams
+- ✅ Comprehensive error handling and logging
+- ✅ Infrastructure as Code with AWS SAM
+- ✅ Environment variable and JSON file configuration support
+
+## Architecture
+
+```
+EventBridge Schedule → Lambda Function → Finnhub API
+                           ↓
+                    Kinesis Data Stream
+```
+
+## Prerequisites
+
+1. **AWS CLI** - [Install Guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+2. **SAM CLI** - [Install Guide](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)
+3. **Finnhub API Key** - [Get Free Key](https://finnhub.io/register)
+4. **S3 Bucket** for deployment artifacts
+
+## Configuration
+
+The application supports configuration through both environment variables and a JSON config file.
+
+### Environment Variables
+
+- `FINNHUB_API_KEY` - Your Finnhub API key (required)
+- `KINESIS_STREAM_NAME` - Name of the Kinesis stream (default: "stock-prices-stream")
+- `POLLING_INTERVAL_SECONDS` - How often to fetch prices in seconds (default: 300)
+- `STOCK_SYMBOLS` - Comma-separated list of stock symbols (default: "AAPL,GOOGL,MSFT,AMZN,TSLA,META,NVDA,NFLX")
+- `ENFORCE_MARKET_HOURS` - Whether to enforce market hours (default: true)
+- `TEST_MODE` - Enable test mode to bypass market hours (default: false)
+- `AWS_REGION` - AWS region (default: "us-east-1")
+
+### JSON Configuration File
+
+Edit `config.json` to customize:
+
+```json
+{
+  "stock_symbols": ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA"],
+  "kinesis_stream_name": "stock-prices-stream",
+  "polling_interval_seconds": 300,
+  "max_requests_per_minute": 60,
+  "aws_region": "us-east-1",
+  "enforce_market_hours": true,
+  "test_mode": false
+}
+```
+
+## Market Hours Enforcement
+
+By default, the Lambda function only executes during US stock market hours:
+- **Trading Days**: Monday-Friday (excluding holidays)
+- **Trading Hours**: 9:30 AM - 4:00 PM Eastern Time
+- **Holidays**: Major US stock market holidays are automatically detected
+
+### Test Mode
+
+Enable test mode to bypass market hours enforcement for development/testing:
+
+```bash
+# Enable test mode via environment variable
+export TEST_MODE=true
+
+# Or set in config.json
+{
+  "test_mode": true
+}
+
+# Or deploy with test mode enabled
+TEST_MODE=true ./deploy.sh
+```
+
+### Disabling Market Hours Enforcement
+
+```bash
+# Disable market hours completely
+export ENFORCE_MARKET_HOURS=false
+
+# The function will run regardless of market status
+```
+
+## Quick Start
+
+1. **Clone and setup:**
+   ```bash
+   cd StockLambdaProducer
+   ```
+
+2. **Set your API key:**
+   ```bash
+   export FINNHUB_API_KEY="your-api-key-here"
+   ```
+
+3. **Deploy:**
+   ```bash
+   ./deploy.sh
+   ```
+
+4. **Enable test mode (optional):**
+   ```bash
+   TEST_MODE=true ./deploy.sh
+   ```
+
+## Manual Deployment
+
+If you prefer manual deployment:
+
+```bash
+# Build the application
+sam build
+
+# Deploy with parameters
+sam deploy \
+    --stack-name stock-lambda-producer \
+    --s3-bucket your-deployment-bucket \
+    --capabilities CAPABILITY_IAM \
+    --parameter-overrides \
+        FinnhubApiKey="your-api-key" \
+        KinesisStreamName="stock-prices-stream" \
+        PollingIntervalSeconds="300" \
+        EnforceMarketHours="true" \
+        TestMode="false"
+```
+
+## Data Format
+
+Each stock record sent to Kinesis contains:
+
+```json
+{
+  "symbol": "AAPL",
+  "price": 150.25,
+  "change": 2.50,
+  "change_percent": "1.69",
+  "high": 152.00,
+  "low": 149.50,
+  "open": 151.00,
+  "previous_close": 147.75,
+  "timestamp": "2024-01-15T10:30:00.000Z"
+}
+```
+
+## Monitoring
+
+- **CloudWatch Logs**: `/aws/lambda/stock-lambda-producer`
+- **Kinesis Metrics**: Monitor stream throughput in CloudWatch
+- **Lambda Metrics**: Monitor function execution, errors, and duration
+
+## Cost Considerations
+
+- **Finnhub**: Free tier allows 60 API calls per minute
+- **Lambda**: Pay per invocation and execution time
+- **Kinesis**: Pay per shard hour and PUT payload units
+- **CloudWatch**: Pay for log storage and metrics
+
+## Rate Limiting
+
+The free Finnhub API tier has limits:
+- 60 API calls per minute
+- No daily limit on free tier
+
+The application respects these limits by default. For higher throughput, consider upgrading your Finnhub plan.
+
+## Customization
+
+### Adding More Stock Symbols
+
+Edit `config.json` or set the `STOCK_SYMBOLS` environment variable:
+
+```bash
+export STOCK_SYMBOLS="AAPL,GOOGL,MSFT,AMZN,TSLA,META,NVDA,NFLX,JPM,V,WMT,DIS"
+```
+
+### Changing Polling Frequency
+
+For more frequent updates (e.g., every 5 seconds):
+
+```bash
+export POLLING_INTERVAL_SECONDS=5
+```
+
+⚠️ **Warning**: Very frequent polling may exceed API rate limits.
+
+### Custom Kinesis Stream
+
+```bash
+export KINESIS_STREAM_NAME="my-custom-stock-stream"
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **API Rate Limiting**: Reduce polling frequency or upgrade Finnhub plan
+2. **Kinesis Throttling**: Increase shard count or reduce data volume
+3. **Lambda Timeouts**: Increase timeout in `template.yaml`
+
+### Logs
+
+Check CloudWatch logs for detailed error information:
+
+```bash
+aws logs tail /aws/lambda/stock-lambda-producer --follow
+```
+
+## Security
+
+- API keys are stored as encrypted environment variables
+- Lambda function uses least-privilege IAM permissions
+- No sensitive data is logged
+
+## License
+
+MIT License - see LICENSE file for details.

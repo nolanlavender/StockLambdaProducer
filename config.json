@@ -1,0 +1,9 @@
+{
+  "stock_symbols": ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA", "META", "NVDA", "NFLX", "JPM", "V"],
+  "kinesis_stream_name": "stock-prices-stream",
+  "polling_interval_seconds": 5,
+  "max_requests_per_minute": 60,
+  "aws_region": "us-east-1",
+  "enforce_market_hours": true,
+  "test_mode": false
+}

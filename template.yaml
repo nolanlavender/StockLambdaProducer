@@ -1,0 +1,96 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'Stock Lambda Producer - Fetches stock prices and sends to Kinesis'
+
+Parameters:
+  FinnhubApiKey:
+    Type: String
+    Description: API key for Finnhub stock data service
+    NoEcho: true
+  
+  KinesisStreamName:
+    Type: String
+    Default: stock-prices-stream
+    Description: Name of the Kinesis Data Stream
+  
+  PollingIntervalSeconds:
+    Type: Number
+    Default: 300
+    Description: How often to fetch stock prices (in seconds)
+    MinValue: 60
+    MaxValue: 3600
+  
+  EnforceMarketHours:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Whether to enforce market hours (true/false)
+  
+  TestMode:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: Enable test mode to bypass market hours check (true/false)
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 256
+    Runtime: python3.11
+
+Resources:
+  StockPricesStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      Name: !Ref KinesisStreamName
+      ShardCount: 1
+      RetentionPeriodHours: 24
+      
+  StockLambdaProducer:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: lambda_function.lambda_handler
+      Environment:
+        Variables:
+          FINNHUB_API_KEY: !Ref FinnhubApiKey
+          KINESIS_STREAM_NAME: !Ref KinesisStreamName
+          POLLING_INTERVAL_SECONDS: !Ref PollingIntervalSeconds
+          ENFORCE_MARKET_HOURS: !Ref EnforceMarketHours
+          TEST_MODE: !Ref TestMode
+      Policies:
+        - KinesisCrudPolicy:
+            StreamName: !Ref KinesisStreamName
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: '*'
+      Events:
+        ScheduledEvent:
+          Type: Schedule
+          Properties:
+            Schedule: !Sub 'rate(${PollingIntervalSeconds} seconds)'
+            Enabled: true
+
+  StockLambdaProducerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${StockLambdaProducer}'
+      RetentionInDays: 7
+
+Outputs:
+  StockLambdaProducerFunction:
+    Description: Stock Lambda Producer Function ARN
+    Value: !GetAtt StockLambdaProducer.Arn
+    
+  KinesisStreamArn:
+    Description: Kinesis Data Stream ARN
+    Value: !GetAtt StockPricesStream.Arn
+    
+  KinesisStreamName:
+    Description: Kinesis Data Stream Name
+    Value: !Ref StockPricesStream
