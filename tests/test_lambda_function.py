@@ -4,6 +4,9 @@ from unittest.mock import patch, MagicMock, mock_open
 import boto3
 from moto import mock_kinesis
 import responses
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 from lambda_function import lambda_handler, fetch_stock_prices, send_to_kinesis
 
 

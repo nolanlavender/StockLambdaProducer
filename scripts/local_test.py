@@ -10,8 +10,10 @@ import json
 from datetime import datetime
 from unittest.mock import patch, MagicMock
 
-# Add current directory to Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add src directory to Python path
+script_dir = os.path.dirname(os.path.abspath(__file__))
+src_dir = os.path.join(os.path.dirname(script_dir), 'src')
+sys.path.insert(0, src_dir)
 
 from lambda_function import lambda_handler
 

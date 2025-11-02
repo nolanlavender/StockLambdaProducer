@@ -1,6 +1,9 @@
 import pytest
 import os
 import requests
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 from lambda_function import fetch_stock_prices
 
 

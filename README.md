@@ -22,6 +22,35 @@ EventBridge (12h) → Step Functions → Lambda Function → Finnhub API
                     Wait State        Kinesis Data Stream
 ```
 
+## Directory Structure
+
+```
+StockLambdaProducer/
+├── src/                        # Source code
+│   ├── lambda_function.py      # Main Lambda handler
+│   ├── config.py               # Configuration management
+│   ├── market_hours.py         # Market hours logic
+│   ├── secrets_manager.py      # AWS Secrets Manager integration
+│   ├── step_function_controller.py # Step Function controller
+│   └── requirements.txt        # Python dependencies
+├── scripts/                    # Utility scripts
+│   ├── deploy.sh              # Deployment script
+│   ├── run_tests.sh           # Test runner
+│   ├── test_api.sh            # API connectivity test
+│   ├── teardown.sh            # Cleanup script
+│   └── local_test.py          # Local testing script
+├── configs/                    # Configuration files
+│   ├── config.json            # Main configuration
+│   └── .env.example           # Environment variables example
+├── tests/                      # Test suite
+│   ├── test_*.py              # Test files
+│   └── test_config.json       # Test configuration
+├── template.yaml               # AWS SAM template
+├── requirements.txt            # Python dependencies (duplicate for AWS)
+├── test_requirements.txt       # Test dependencies
+└── README.md                  # This file
+```
+
 ## Prerequisites
 
 1. **AWS CLI** - [Install Guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
@@ -47,7 +76,7 @@ The application supports configuration through both environment variables and a 
 
 ### JSON Configuration File
 
-Edit `config.json` to customize:
+Edit `configs/config.json` to customize:
 
 ```json
 {
@@ -84,9 +113,9 @@ To use environment variables instead (not recommended for production):
 
 ```bash
 # Deploy without Secrets Manager
-USE_SECRETS_MANAGER=false ./deploy.sh
+USE_SECRETS_MANAGER=false ./scripts/deploy.sh
 
-# Or set in config.json
+# Or set in configs/config.json
 {
   "use_secrets_manager": false
 }
@@ -107,13 +136,13 @@ Enable test mode to bypass market hours enforcement for development/testing:
 # Enable test mode via environment variable
 export TEST_MODE=true
 
-# Or set in config.json
+# Or set in configs/config.json
 {
   "test_mode": true
 }
 
 # Or deploy with test mode enabled
-TEST_MODE=true ./deploy.sh
+TEST_MODE=true ./scripts/deploy.sh
 ```
 
 ### Disabling Market Hours Enforcement
@@ -139,12 +168,12 @@ export ENFORCE_MARKET_HOURS=false
 
 3. **Deploy:**
    ```bash
-   ./deploy.sh
+   ./scripts/deploy.sh
    ```
 
 4. **Enable test mode (optional):**
    ```bash
-   TEST_MODE=true ./deploy.sh
+   TEST_MODE=true ./scripts/deploy.sh
    ```
 
 ## Manual Deployment
@@ -212,7 +241,7 @@ The application respects these limits by default. For higher throughput, conside
 
 ### Adding More Stock Symbols
 
-Edit `config.json` or set the `STOCK_SYMBOLS` environment variable:
+Edit `configs/config.json` or set the `STOCK_SYMBOLS` environment variable:
 
 ```bash
 export STOCK_SYMBOLS="AAPL,GOOGL,MSFT,AMZN,TSLA,META,NVDA,NFLX,JPM,V,WMT,DIS"
@@ -257,17 +286,17 @@ Before deploying, test your code locally:
 ### Quick Test
 ```bash
 # Test the Lambda function locally
-python3 local_test.py
+python3 scripts/local_test.py
 ```
 
 ### Full Test Suite
 ```bash
 # Run comprehensive tests
-./run_tests.sh
+./scripts/run_tests.sh
 
 # Test real API connectivity
 export FINNHUB_API_KEY=your-api-key-here
-./test_api.sh
+./scripts/test_api.sh
 ```
 
 ### Test Configuration

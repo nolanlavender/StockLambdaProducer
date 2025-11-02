@@ -67,7 +67,7 @@ Resources:
   StockLambdaProducer:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: .
+      CodeUri: src
       Handler: lambda_function.lambda_handler
       Environment:
         Variables:
@@ -217,7 +217,7 @@ Resources:
   StepFunctionControllerFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: .
+      CodeUri: src
       Handler: step_function_controller.lambda_handler
       Runtime: python3.11
       Timeout: 30

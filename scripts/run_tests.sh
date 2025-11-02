@@ -35,7 +35,7 @@ echo -e "${YELLOW}Installing dependencies...${NC}"
 pip install -q -r test_requirements.txt
 
 # Set test environment variables
-export PYTHONPATH="$PWD:$PYTHONPATH"
+export PYTHONPATH="$PWD/src:$PWD:$PYTHONPATH"
 export CONFIG_FILE_PATH="tests/test_config.json"
 
 # Run different test suites

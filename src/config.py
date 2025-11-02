@@ -16,7 +16,7 @@ class Config:
         """Load configuration from environment variables or config file"""
         
         # Try to load from config file first
-        config_file_path = os.getenv('CONFIG_FILE_PATH', 'config.json')
+        config_file_path = os.getenv('CONFIG_FILE_PATH', 'configs/config.json')
         if os.path.exists(config_file_path):
             with open(config_file_path, 'r') as f:
                 file_config = json.load(f)

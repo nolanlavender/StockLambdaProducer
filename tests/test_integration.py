@@ -5,6 +5,9 @@ from unittest.mock import patch, MagicMock
 import responses
 from moto import mock_kinesis, mock_secretsmanager
 import boto3
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 from lambda_function import lambda_handler
 
 
@@ -154,7 +157,7 @@ class TestIntegration:
                 mock_open.return_value.__enter__.return_value.read.return_value = json.dumps(test_config)
                 
                 # Mock market hours to be closed
-                with patch('market_hours.MarketHours') as mock_market_hours:
+                with patch('src.market_hours.MarketHours') as mock_market_hours:
                     mock_instance = MagicMock()
                     mock_instance.is_market_open.return_value = (False, "Market closed: Weekend")
                     mock_market_hours.return_value = mock_instance

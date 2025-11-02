@@ -2,6 +2,9 @@ import pytest
 import os
 import json
 from unittest.mock import patch, mock_open, MagicMock
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 from config import Config
 
 
