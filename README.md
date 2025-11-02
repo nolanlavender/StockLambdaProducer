@@ -264,6 +264,10 @@ python3 local_test.py
 ```bash
 # Run comprehensive tests
 ./run_tests.sh
+
+# Test real API connectivity
+export FINNHUB_API_KEY=your-api-key-here
+./test_api.sh
 ```
 
 ### Test Configuration
@@ -271,6 +275,7 @@ python3 local_test.py
 The testing framework includes:
 - **Unit tests** for individual components
 - **Integration tests** for end-to-end flows
+- **Live API tests** for real Finnhub connectivity
 - **Mock services** for AWS Kinesis and Secrets Manager
 - **API response mocking** for Finnhub
 - **Market hours testing** with various scenarios
@@ -285,6 +290,7 @@ tests/
 ├── test_secrets_manager.py  # Secrets Manager tests
 ├── test_lambda_function.py  # Lambda function tests
 ├── test_integration.py      # End-to-end tests
+├── test_api_live.py         # Live API connectivity tests
 └── test_config.json         # Test configuration
 ```
 
@@ -295,6 +301,12 @@ pytest tests/test_config.py -v
 
 # Test only market hours
 pytest tests/test_market_hours.py -v
+
+# Test real API connectivity (requires API key)
+pytest tests/test_api_live.py::TestLiveAPI -v -m live
+
+# Test basic connectivity (no API key needed)
+pytest tests/test_api_live.py::TestAPIConnection -v
 
 # Test with coverage
 pytest tests/ --cov=. --cov-report=html
