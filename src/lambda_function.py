@@ -1,7 +1,6 @@
 import json
 import boto3
 import logging
-import os
 from datetime import datetime
 from typing import Dict, List, Any
 import requests
@@ -13,7 +12,7 @@ logger.setLevel(logging.INFO)
 
 kinesis_client = boto3.client('kinesis')
 
-def lambda_handler(event, context):
+def lambda_handler(_event, _context):
     """
     AWS Lambda handler function that fetches stock prices and sends them to Kinesis
     Only runs during market hours unless test mode is enabled
@@ -24,6 +23,19 @@ def lambda_handler(event, context):
         
         # Load API key from Secrets Manager or environment variable
         config.load_api_key()
+        
+        # Validate required configuration
+        if not config.api_key:
+            raise ValueError("API key not found in Secrets Manager or environment variables")
+        if not config.stock_symbols:
+            raise ValueError("No stock symbols configured")
+        if not config.kinesis_stream_name:
+            raise ValueError("Kinesis stream name not configured")
+        
+        # Type assertions for Pylance (after validation, we know these are not None)
+        assert config.api_key is not None
+        assert config.stock_symbols is not None
+        assert config.kinesis_stream_name is not None
         
         logger.info(f"Lambda execution started - Config: {config.to_dict()}")
         

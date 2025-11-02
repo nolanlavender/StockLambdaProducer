@@ -10,6 +10,18 @@ class Config:
     """
     
     def __init__(self):
+        # Type annotations for class attributes
+        self.stock_symbols: List[str]
+        self.use_secrets_manager: bool
+        self.secret_name: str
+        self.api_key: Optional[str]
+        self.kinesis_stream_name: str
+        self.polling_interval_seconds: int
+        self.max_requests_per_minute: int
+        self.aws_region: str
+        self.enforce_market_hours: bool
+        self.test_mode: bool
+        
         self.load_config()
     
     def load_config(self):

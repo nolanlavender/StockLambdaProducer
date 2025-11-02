@@ -7,7 +7,6 @@ Allows testing the Lambda function locally without deploying to AWS
 import os
 import sys
 import json
-from datetime import datetime
 from unittest.mock import patch, MagicMock
 
 # Add src directory to Python path
@@ -16,6 +15,8 @@ src_dir = os.path.join(os.path.dirname(script_dir), 'src')
 sys.path.insert(0, src_dir)
 
 from lambda_function import lambda_handler
+from market_hours import MarketHours
+from config import Config
 
 
 def setup_test_environment():
@@ -113,8 +114,6 @@ def test_market_hours():
     """Test market hours functionality"""
     print("\n🕐 Testing market hours functionality...")
     
-    from market_hours import MarketHours
-    
     market_hours = MarketHours()
     is_open, reason = market_hours.is_market_open()
     
@@ -129,8 +128,6 @@ def test_market_hours():
 def test_config_loading():
     """Test configuration loading"""
     print("\n⚙️  Testing configuration loading...")
-    
-    from config import Config
     
     try:
         config = Config()
@@ -160,8 +157,8 @@ def main():
     
     print("\n💡 Next steps:")
     print("   1. Replace 'your-test-api-key-here' with your actual Finnhub API key")
-    print("   2. Run the full test suite: ./run_tests.sh")
-    print("   3. Deploy to AWS: ./deploy.sh")
+    print("   2. Run the full test suite: ./scripts/run_tests.sh")
+    print("   3. Deploy to AWS: ./scripts/deploy.sh")
 
 
 if __name__ == "__main__":

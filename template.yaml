@@ -155,12 +155,20 @@ Resources:
       DefinitionString: !Sub |
         {
           "Comment": "Stock price collection with configurable intervals (supports sub-minute)",
-          "StartAt": "FetchStockPrices",
+          "StartAt": "InitializeExecution",
           "States": {
+            "InitializeExecution": {
+              "Type": "Pass",
+              "Result": {
+                "executionCount": 0,
+                "maxExecutions": 8640
+              },
+              "Next": "FetchStockPrices"
+            },
             "FetchStockPrices": {
               "Type": "Task",
               "Resource": "${StockLambdaProducer.Arn}",
-              "Next": "CheckContinueCondition",
+              "Next": "IncrementCounter",
               "Retry": [
                 {
                   "ErrorEquals": ["States.ALL"],
@@ -176,16 +184,24 @@ Resources:
                 }
               ]
             },
-            "CheckContinueCondition": {
+            "IncrementCounter": {
+              "Type": "Pass",
+              "Parameters": {
+                "executionCount.$": "$.executionCount + 1",
+                "maxExecutions.$": "$.maxExecutions"
+              },
+              "Next": "CheckExecutionLimit"
+            },
+            "CheckExecutionLimit": {
               "Type": "Choice",
               "Choices": [
                 {
-                  "Variable": "$.statusCode",
-                  "NumericEquals": 200,
-                  "Next": "WaitForNextRun"
+                  "Variable": "$.executionCount",
+                  "NumericGreaterThanEqualsPath": "$.maxExecutions",
+                  "Next": "ExecutionComplete"
                 }
               ],
-              "Default": "WaitAfterError"
+              "Default": "WaitForNextRun"
             },
             "WaitForNextRun": {
               "Type": "Wait",
@@ -196,6 +212,10 @@ Resources:
               "Type": "Wait",
               "Seconds": 60,
               "Next": "FetchStockPrices"
+            },
+            "ExecutionComplete": {
+              "Type": "Succeed",
+              "Comment": "Execution completed - controller will restart if needed"
             }
           }
         }
