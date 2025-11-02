@@ -54,6 +54,7 @@ KINESIS_STREAM_NAME=${KINESIS_STREAM_NAME:-"stock-prices-stream"}
 POLLING_INTERVAL=${POLLING_INTERVAL:-"300"}
 ENFORCE_MARKET_HOURS=${ENFORCE_MARKET_HOURS:-"true"}
 TEST_MODE=${TEST_MODE:-"false"}
+USE_SECRETS_MANAGER=${USE_SECRETS_MANAGER:-"true"}
 
 echo -e "${GREEN}Building SAM application...${NC}"
 sam build
@@ -70,6 +71,7 @@ sam deploy \
         PollingIntervalSeconds="$POLLING_INTERVAL" \
         EnforceMarketHours="$ENFORCE_MARKET_HOURS" \
         TestMode="$TEST_MODE" \
+        UseSecretsManager="$USE_SECRETS_MANAGER" \
     --confirm-changeset
 
 echo -e "${GREEN}Deployment completed successfully!${NC}"

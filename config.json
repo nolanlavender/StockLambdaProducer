@@ -5,5 +5,7 @@
   "max_requests_per_minute": 60,
   "aws_region": "us-east-1",
   "enforce_market_hours": true,
-  "test_mode": false
+  "test_mode": false,
+  "use_secrets_manager": true,
+  "secret_name": "finnhub-api-key"
 }

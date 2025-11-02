@@ -1,6 +1,7 @@
 import os
 import json
-from typing import List
+from typing import List, Optional
+from secrets_manager import SecretsManager
 
 class Config:
     """
@@ -29,12 +30,25 @@ class Config:
             default=['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA', 'META', 'NVDA', 'NFLX']
         )
         
-        # API configuration
-        self.api_key = self._get_config_value(
-            'FINNHUB_API_KEY',
-            file_config.get('api_key'),
-            required=True
+        # API configuration - support both Secrets Manager and direct env var
+        self.use_secrets_manager = self._get_config_value(
+            'USE_SECRETS_MANAGER',
+            file_config.get('use_secrets_manager'),
+            default=True
         )
+        
+        # Convert string 'true'/'false' to boolean
+        if isinstance(self.use_secrets_manager, str):
+            self.use_secrets_manager = self.use_secrets_manager.lower() in ('true', '1', 'yes', 'on')
+        
+        self.secret_name = self._get_config_value(
+            'SECRET_NAME',
+            file_config.get('secret_name'),
+            default='finnhub-api-key'
+        )
+        
+        # This will be populated later by the secrets manager or env var
+        self.api_key = None
         
         # Kinesis stream configuration
         self.kinesis_stream_name = self._get_config_value(
@@ -86,6 +100,35 @@ class Config:
         if isinstance(self.test_mode, str):
             self.test_mode = self.test_mode.lower() in ('true', '1', 'yes', 'on')
     
+    def load_api_key(self) -> Optional[str]:
+        """
+        Load API key from Secrets Manager or environment variable
+        
+        Returns:
+            The API key or None if not found
+        """
+        if self.use_secrets_manager:
+            try:
+                secrets_manager = SecretsManager(region_name=self.aws_region)
+                self.api_key = secrets_manager.get_api_key(
+                    secret_name=self.secret_name,
+                    fallback_env_var='FINNHUB_API_KEY'
+                )
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to initialize Secrets Manager: {e}")
+                # Fallback to environment variable
+                self.api_key = os.getenv('FINNHUB_API_KEY')
+        else:
+            # Use environment variable directly
+            self.api_key = os.getenv('FINNHUB_API_KEY')
+        
+        if not self.api_key:
+            raise ValueError("API key not found in Secrets Manager or environment variables")
+        
+        return self.api_key
+    
     def _get_config_value(self, env_var: str, file_value, default=None, required=False):
         """Get configuration value with priority: env var > file > default"""
         value = os.getenv(env_var, file_value if file_value is not None else default)
@@ -109,5 +152,7 @@ class Config:
             'aws_region': self.aws_region,
             'enforce_market_hours': self.enforce_market_hours,
             'test_mode': self.test_mode,
+            'use_secrets_manager': self.use_secrets_manager,
+            'secret_name': self.secret_name if self.use_secrets_manager else 'N/A',
             'api_key_configured': bool(self.api_key)
         }

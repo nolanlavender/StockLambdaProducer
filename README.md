@@ -8,6 +8,7 @@ A configurable AWS Lambda function that fetches real-time stock prices and strea
 - ✅ Real-time stock price fetching from Finnhub API
 - ✅ **Market hours enforcement** - only runs during trading hours
 - ✅ **Test mode** - bypass market hours for testing/development
+- ✅ **AWS Secrets Manager integration** - secure API key storage
 - ✅ Automatic streaming to Kinesis Data Streams
 - ✅ Comprehensive error handling and logging
 - ✅ Infrastructure as Code with AWS SAM
@@ -40,6 +41,8 @@ The application supports configuration through both environment variables and a 
 - `STOCK_SYMBOLS` - Comma-separated list of stock symbols (default: "AAPL,GOOGL,MSFT,AMZN,TSLA,META,NVDA,NFLX")
 - `ENFORCE_MARKET_HOURS` - Whether to enforce market hours (default: true)
 - `TEST_MODE` - Enable test mode to bypass market hours (default: false)
+- `USE_SECRETS_MANAGER` - Use AWS Secrets Manager for API key (default: true)
+- `SECRET_NAME` - Name of the secret in Secrets Manager (default: "finnhub-api-key")
 - `AWS_REGION` - AWS region (default: "us-east-1")
 
 ### JSON Configuration File
@@ -54,7 +57,38 @@ Edit `config.json` to customize:
   "max_requests_per_minute": 60,
   "aws_region": "us-east-1",
   "enforce_market_hours": true,
-  "test_mode": false
+  "test_mode": false,
+  "use_secrets_manager": true,
+  "secret_name": "finnhub-api-key"
+}
+```
+
+## 🔐 AWS Secrets Manager Integration
+
+By default, the application uses AWS Secrets Manager to securely store your Finnhub API key. This provides several security benefits:
+
+- **No plaintext API keys** in environment variables or logs
+- **Automatic encryption** at rest and in transit
+- **IAM-based access control** 
+- **Minimal performance impact** (~50ms first call, then cached)
+
+### How It Works
+
+1. **Deployment**: Your API key is stored in Secrets Manager during deployment
+2. **Runtime**: Lambda retrieves the key from Secrets Manager on startup
+3. **Fallback**: If Secrets Manager fails, falls back to environment variable
+
+### Disabling Secrets Manager
+
+To use environment variables instead (not recommended for production):
+
+```bash
+# Deploy without Secrets Manager
+USE_SECRETS_MANAGER=false ./deploy.sh
+
+# Or set in config.json
+{
+  "use_secrets_manager": false
 }
 ```
 
@@ -131,7 +165,8 @@ sam deploy \
         KinesisStreamName="stock-prices-stream" \
         PollingIntervalSeconds="300" \
         EnforceMarketHours="true" \
-        TestMode="false"
+        TestMode="false" \
+        UseSecretsManager="true"
 ```
 
 ## Data Format

@@ -22,6 +22,9 @@ def lambda_handler(event, context):
         config = Config()
         market_hours = MarketHours()
         
+        # Load API key from Secrets Manager or environment variable
+        config.load_api_key()
+        
         logger.info(f"Lambda execution started - Config: {config.to_dict()}")
         
         # Check market hours unless in test mode

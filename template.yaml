@@ -31,6 +31,15 @@ Parameters:
     Default: 'false'
     AllowedValues: ['true', 'false']
     Description: Enable test mode to bypass market hours check (true/false)
+  
+  UseSecretsManager:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Use AWS Secrets Manager to store API key (recommended)
+
+Conditions:
+  UseSecretsManagerCondition: !Equals [!Ref UseSecretsManager, 'true']
 
 Globals:
   Function:
@@ -39,6 +48,14 @@ Globals:
     Runtime: python3.11
 
 Resources:
+  FinnhubApiKeySecret:
+    Type: AWS::SecretsManager::Secret
+    Condition: UseSecretsManagerCondition
+    Properties:
+      Name: finnhub-api-key
+      Description: Finnhub API key for stock data access
+      SecretString: !Ref FinnhubApiKey
+      
   StockPricesStream:
     Type: AWS::Kinesis::Stream
     Properties:
@@ -53,11 +70,13 @@ Resources:
       Handler: lambda_function.lambda_handler
       Environment:
         Variables:
-          FINNHUB_API_KEY: !Ref FinnhubApiKey
+          FINNHUB_API_KEY: !If [UseSecretsManagerCondition, '', !Ref FinnhubApiKey]
           KINESIS_STREAM_NAME: !Ref KinesisStreamName
           POLLING_INTERVAL_SECONDS: !Ref PollingIntervalSeconds
           ENFORCE_MARKET_HOURS: !Ref EnforceMarketHours
           TEST_MODE: !Ref TestMode
+          USE_SECRETS_MANAGER: !Ref UseSecretsManager
+          SECRET_NAME: !If [UseSecretsManagerCondition, !Ref FinnhubApiKeySecret, '']
       Policies:
         - KinesisCrudPolicy:
             StreamName: !Ref KinesisStreamName
@@ -69,6 +88,13 @@ Resources:
                 - logs:CreateLogStream
                 - logs:PutLogEvents
               Resource: '*'
+            - !If
+              - UseSecretsManagerCondition
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref FinnhubApiKeySecret
+              - !Ref AWS::NoValue
       Events:
         ScheduledEvent:
           Type: Schedule
