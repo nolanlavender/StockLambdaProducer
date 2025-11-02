@@ -187,7 +187,7 @@ Resources:
             "IncrementCounter": {
               "Type": "Pass",
               "Parameters": {
-                "executionCount.$": "$.executionCount + 1",
+                "executionCount.$": "States.MathAdd($.executionCount, 1)",
                 "maxExecutions.$": "$.maxExecutions"
               },
               "Next": "CheckExecutionLimit"
@@ -197,7 +197,7 @@ Resources:
               "Choices": [
                 {
                   "Variable": "$.executionCount",
-                  "NumericGreaterThanEqualsPath": "$.maxExecutions",
+                  "NumericGreaterThanEquals": 8640,
                   "Next": "ExecutionComplete"
                 }
               ],
