@@ -55,6 +55,7 @@ POLLING_INTERVAL=${POLLING_INTERVAL:-"5"}
 ENFORCE_MARKET_HOURS=${ENFORCE_MARKET_HOURS:-"true"}
 TEST_MODE=${TEST_MODE:-"false"}
 USE_SECRETS_MANAGER=${USE_SECRETS_MANAGER:-"true"}
+STOCK_SYMBOLS=${STOCK_SYMBOLS:-"AAPL,GOOGL,MSFT,AMZN,TSLA,META,NVDA,NFLX"}
 
 echo -e "${GREEN}Building SAM application...${NC}"
 sam build
@@ -97,6 +98,7 @@ sam deploy \
         EnforceMarketHours="$ENFORCE_MARKET_HOURS" \
         TestMode="$TEST_MODE" \
         UseSecretsManager="$USE_SECRETS_MANAGER" \
+        StockSymbols="$STOCK_SYMBOLS" \
     $UPDATE_MODE \
     --no-fail-on-empty-changeset
 

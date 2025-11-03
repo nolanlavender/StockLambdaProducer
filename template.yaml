@@ -38,6 +38,11 @@ Parameters:
     Default: 'true'
     AllowedValues: ['true', 'false']
     Description: Use AWS Secrets Manager to store API key (recommended)
+  
+  StockSymbols:
+    Type: String
+    Default: 'AAPL,GOOGL,MSFT,AMZN,TSLA,META,NVDA,NFLX'
+    Description: Comma-separated list of stock symbols to track
 
 Conditions:
   UseSecretsManagerCondition: !Equals [!Ref UseSecretsManager, 'true']
@@ -78,6 +83,7 @@ Resources:
           TEST_MODE: !Ref TestMode
           USE_SECRETS_MANAGER: !Ref UseSecretsManager
           SECRET_NAME: !If [UseSecretsManagerCondition, !Ref FinnhubApiKeySecret, '']
+          STOCK_SYMBOLS: !Ref StockSymbols
       Policies:
         - KinesisCrudPolicy:
             StreamName: !Ref KinesisStreamName
@@ -175,6 +181,7 @@ Resources:
               "Type": "Task",
               "Resource": "${StockLambdaProducer.Arn}",
               "Next": "IncrementCounter",
+              "ResultPath": "$.lambdaResult",
               "Retry": [
                 {
                   "ErrorEquals": ["States.ALL"],
@@ -186,7 +193,8 @@ Resources:
               "Catch": [
                 {
                   "ErrorEquals": ["States.ALL"],
-                  "Next": "WaitAfterError"
+                  "Next": "IncrementCounter",
+                  "ResultPath": "$.lambdaError"
                 }
               ]
             },
@@ -194,7 +202,9 @@ Resources:
               "Type": "Pass",
               "Parameters": {
                 "executionCount.$": "States.MathAdd($.executionCount, 1)",
-                "maxExecutions.$": "$.maxExecutions"
+                "maxExecutions.$": "$.maxExecutions",
+                "lambdaResult.$": "$.lambdaResult",
+                "lambdaError.$": "$.lambdaError"
               },
               "Next": "CheckExecutionLimit"
             },
@@ -217,7 +227,7 @@ Resources:
             "WaitAfterError": {
               "Type": "Wait",
               "Seconds": 60,
-              "Next": "FetchStockPrices"
+              "Next": "IncrementCounter"
             },
             "ExecutionComplete": {
               "Type": "Succeed",
