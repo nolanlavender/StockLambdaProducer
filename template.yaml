@@ -224,11 +224,6 @@ Resources:
               "Seconds": ${PollingIntervalSeconds},
               "Next": "FetchStockPrices"
             },
-            "WaitAfterError": {
-              "Type": "Wait",
-              "Seconds": 60,
-              "Next": "IncrementCounter"
-            },
             "ExecutionComplete": {
               "Type": "Succeed",
               "Comment": "Execution completed - controller will restart if needed"
