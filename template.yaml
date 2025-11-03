@@ -202,9 +202,7 @@ Resources:
               "Type": "Pass",
               "Parameters": {
                 "executionCount.$": "States.MathAdd($.executionCount, 1)",
-                "maxExecutions.$": "$.maxExecutions",
-                "lambdaResult.$": "$.lambdaResult",
-                "lambdaError.$": "$.lambdaError"
+                "maxExecutions.$": "$.maxExecutions"
               },
               "Next": "CheckExecutionLimit"
             },
