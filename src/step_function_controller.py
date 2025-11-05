@@ -13,15 +13,26 @@ def lambda_handler(event, context):
     """
     EventBridge-triggered Lambda that controls Step Function execution
     Starts/stops based on market hours and other conditions
+    Can be triggered by:
+    1. Scheduled rule (every 30 min) - regular health check
+    2. Step Function completion event - immediate restart for zero data loss
     """
-    
+
     try:
         # Get Step Function ARN from environment
         import os
         state_machine_arn = os.getenv('STATE_MACHINE_ARN')
         if not state_machine_arn:
             raise ValueError("STATE_MACHINE_ARN environment variable not set")
-        
+
+        # Determine trigger source
+        trigger_source = "scheduled"
+        if event.get('detail-type') == 'Step Functions Execution Status Change':
+            trigger_source = "completion"
+            logger.info(f"🔔 Triggered by Step Function completion event")
+        else:
+            logger.info(f"⏰ Triggered by scheduled rule")
+
         market_hours = MarketHours()
         is_market_open, reason = market_hours.is_market_open()
         
@@ -65,6 +76,7 @@ def lambda_handler(event, context):
         return {
             'statusCode': 200,
             'body': json.dumps({
+                'trigger_source': trigger_source,
                 'market_open': is_market_open,
                 'market_reason': reason,
                 'running_executions': len(running_executions),

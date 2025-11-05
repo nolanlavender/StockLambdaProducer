@@ -173,7 +173,7 @@ Resources:
               "Type": "Pass",
               "Result": {
                 "executionCount": 0,
-                "maxExecutions": 8640
+                "maxExecutions": 4000
               },
               "Next": "FetchStockPrices"
             },
@@ -211,7 +211,7 @@ Resources:
               "Choices": [
                 {
                   "Variable": "$.executionCount",
-                  "NumericGreaterThanEquals": 8640,
+                  "NumericGreaterThanEquals": 4000,
                   "Next": "ExecutionComplete"
                 }
               ],
@@ -291,6 +291,35 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceArn: !GetAtt StepFunctionControllerRule.Arn
+
+  # EventBridge rule to immediately restart when Step Function completes (zero data loss)
+  StepFunctionCompletionRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Immediately restart Step Function when execution completes during market hours"
+      EventPattern:
+        source:
+          - "aws.states"
+        detail-type:
+          - "Step Functions Execution Status Change"
+        detail:
+          status:
+            - "SUCCEEDED"
+          stateMachineArn:
+            - !Ref StockPriceStateMachine
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt StepFunctionControllerFunction.Arn
+          Id: "StepFunctionCompletionTarget"
+
+  # Permission for completion EventBridge rule to invoke the controller Lambda
+  StepFunctionCompletionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref StepFunctionControllerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt StepFunctionCompletionRule.Arn
 
   StockLambdaProducerLogGroup:
     Type: AWS::Logs::LogGroup
